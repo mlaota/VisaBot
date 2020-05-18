@@ -77,7 +77,7 @@ class VisaBot(dc.Client):
         CMD_NUM_TOKENS = 3
         ACTIONS = {'sponsor'}  # TODO: 'revoke'
         command = message.content
-        action = command.split[0][1:]  # gets action and removes the command prefix
+        action = command.split()[0][1:]  # gets action and removes the command prefix
         if not (command.startswith(self.command_prefix) and action in ACTIONS):
             return
         _, target, duration = command.split(maxsplit=(CMD_NUM_TOKENS - 1))
