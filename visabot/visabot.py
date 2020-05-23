@@ -30,7 +30,9 @@ class VisaBot(dc.Client):
     TODO:
         - Support configuration of sponsor / tourist roles by the user.
         - Manage multiple [sponsor, tourist] relationships.
+        - Implement the 'revoke' command to remove a visa.
     """
+
     def __init__(self, command_prefix: str, sponsor_role: str, visa_role: str,
                  announcement_channel: str):
         super().__init__()
@@ -39,6 +41,10 @@ class VisaBot(dc.Client):
         self.visa_role = visa_role
         self.announcement_channel = announcement_channel
         self._visas = dict()  # type: Dict[dc.Member, datetime]
+        self._cmd_handlers = {
+            'sponsor': self._action_sponsor,
+            'setrole': self._action_setrole
+        }
 
     async def on_ready(self):
         """Override."""
@@ -74,22 +80,36 @@ class VisaBot(dc.Client):
         Discord message. Upon any failure, a help message is displayed to
         the user.
         """
-        CMD_NUM_TOKENS = 3
-        ACTIONS = {'sponsor'}  # TODO: 'revoke'
         command = message.content
         action = command.split()[0][1:]  # gets action and removes the command prefix
-        if not (command.startswith(self.command_prefix) and action in ACTIONS):
+        if not command.startswith(self.command_prefix):
             return
-        _, target, duration = command.split(maxsplit=(CMD_NUM_TOKENS - 1))
-        if action == 'sponsor':
-            if len(message.mentions) > 0:
-                try:
-                    expiry = dt.datetime.now() + parse_duration(duration)
-                    await self._approve_visa(message.mentions.pop(), expiry)
-                except ValueError:
-                    await self._help(message)
-            else:
+        if action in self._cmd_handlers:
+            self._cmd_handlers[action](message)
+        else:
+            await self._help(message)
+
+    def _action_sponsor(self, message: dc.Message):
+        """Handles the administration of visas from a sponsor to a tourist."""
+        NUM_TOKENS = 3
+        _, target, duration = message.content.split(maxsplit=(NUM_TOKENS - 1))
+        if len(message.mentions) > 0:
+            try:
+                expiry = dt.datetime.now() + parse_duration(duration)
+                await self._approve_visa(message.mentions.pop(), expiry)
+            except ValueError:
                 await self._help(message)
+        else:
+            await self._help(message)
+
+    def _action_setrole(self, message: dc.Message):
+        """Updates the role name of a known responsibility (i.e. sponsor)."""
+        NUM_TOKENS = 3
+        _, responsibility, role_name = message.content.split(maxsplit=(NUM_TOKENS - 1))
+        if responsibility == 'sponsor':
+            self.sponsor_role = role_name
+        elif responsibility == 'tourist':
+            self.visa_role = role_name
         else:
             await self._help(message)
 
@@ -142,7 +162,7 @@ def parse_duration(duration: str):
         ValueError: A time unit (following a numerical value) in 'duration' is not supported.
 
     Examples:
-        parse_duration('5 minutes)
+        parse_duration('5 minutes')
             -> timedelta(minutes=5)
         parse_duration('3 hrs, 1 min and 30 secs')
             -> timedelta(hours=3, minutes=1, seconds=30)
@@ -154,7 +174,7 @@ def parse_duration(duration: str):
     HOUR_STRINGS = {'hr', 'hrs', 'hour', 'hours'}
     DAY_STRINGS = {'day', 'days'}
     WEEK_STRINGS = {'week', 'weeks'}
-    tokens = duration.lower().strip(',').replace('and', '').split()
+    tokens = duration.lower().replace(',', '').replace('and', '').split()
     parsed = dt.timedelta(seconds=0)
     for i, tk in enumerate(tokens):
         try:
