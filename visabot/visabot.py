@@ -85,11 +85,11 @@ class VisaBot(dc.Client):
         if not command.startswith(self.command_prefix):
             return
         if action in self._cmd_handlers:
-            self._cmd_handlers[action](message)
+            await self._cmd_handlers[action](message)
         else:
             await self._help(message)
 
-    def _action_sponsor(self, message: dc.Message):
+    async def _action_sponsor(self, message: dc.Message):
         """Handles the administration of visas from a sponsor to a tourist."""
         NUM_TOKENS = 3
         _, target, duration = message.content.split(maxsplit=(NUM_TOKENS - 1))
@@ -102,7 +102,7 @@ class VisaBot(dc.Client):
         else:
             await self._help(message)
 
-    def _action_setrole(self, message: dc.Message):
+    async def _action_setrole(self, message: dc.Message):
         """Updates the role name of a known responsibility (i.e. sponsor)."""
         NUM_TOKENS = 3
         _, responsibility, role_name = message.content.split(maxsplit=(NUM_TOKENS - 1))
