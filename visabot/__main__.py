@@ -1,10 +1,9 @@
 import discord
 from visabot.visabot import VisaBot
-import keyring
+import os
 
-service_id = 'VisaBot'
-password = keyring.get_password(service_id, 'dev')
-client = VisaBot(command_prefix='!', sponsor_role='sponsor', visa_role='tourist',
-                 announcement_channel='general')
+password = os.getenv('VISABOT_SECRET')
+client = VisaBot(command_prefix='!', sponsor_role='OG Saudi', visa_role='Tourist Visa',
+                 announcement_channel='sandscript')
 print('Using discord.py version {}'.format(discord.__version__))
 client.run(password)
