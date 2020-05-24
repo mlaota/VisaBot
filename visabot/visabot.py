@@ -55,9 +55,6 @@ class VisaBot(dc.Client):
         """Override."""
         if message.author == self.user:
             return
-        if not dc.utils.get(message.author.roles, name=self.sponsor_role):
-            await message.channel.send('Only the %s role can sponsor members!' % self.sponsor_role)
-            return
         await self._parse_command(message)
 
     async def _help(self, message: dc.Message):
@@ -92,6 +89,9 @@ class VisaBot(dc.Client):
     async def _action_sponsor(self, message: dc.Message):
         """Handles the administration of visas from a sponsor to a tourist."""
         NUM_TOKENS = 3
+        if not dc.utils.get(message.author.roles, name=self.sponsor_role):
+            await message.channel.send('Only the %s role can sponsor members!' % self.sponsor_role)
+            return
         _, target, duration = message.content.split(maxsplit=(NUM_TOKENS - 1))
         if len(message.mentions) > 0:
             try:
