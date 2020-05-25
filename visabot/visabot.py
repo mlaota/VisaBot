@@ -89,7 +89,7 @@ class VisaBot(dc.Client):
     async def _action_sponsor(self, message: dc.Message):
         """Handles the administration of visas from a sponsor to a tourist."""
         NUM_TOKENS = 3
-        self._validate_role(message, self.sponsor_role)
+        await self._validate_role(message, self.sponsor_role)
         _, target, duration = message.content.split(maxsplit=(NUM_TOKENS - 1))
         if len(message.mentions) > 0:
             try:
