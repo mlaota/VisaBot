@@ -1,5 +1,6 @@
 import asyncio
 import datetime as dt
+import pytz
 import discord as dc
 from typing import Dict
 
@@ -127,7 +128,7 @@ class VisaBot(dc.Client):
         await member.add_roles(visa_role)
         self._visas[member] = expiry
         channel = dc.utils.get(member.guild.channels, name=self.announcement_channel)
-        expiry_str = expiry.strftime('%c')
+        expiry_str = expiry.astimezone(pytz.timezone('US/Eastern')).strftime('%c Eastern Time')
         await channel.send('{}\'s visa will expire on {}'.format(member.mention, expiry_str))
 
     async def _poll_visas(self):
