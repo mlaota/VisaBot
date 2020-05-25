@@ -40,7 +40,7 @@ class VisaBot(dc.Client):
         self.sponsor_role = sponsor_role
         self.visa_role = visa_role
         self.announcement_channel = announcement_channel
-        self._visas = dict()  # type: Dict[dc.Member, datetime]
+        self._visas = dict()  # type: Dict[dc.Member, dt.datetime]
         self._cmd_handlers = {
             'sponsor': self._action_sponsor,
             'setrole': self._action_setrole
