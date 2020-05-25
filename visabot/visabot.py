@@ -27,11 +27,6 @@ class VisaBot(dc.Client):
         visa_role: The role given to a user awarded with a visa.
         announcement_chanel: The text channel where the bot announces when visas are
             awarded or revoked.
-
-    TODO:
-        - Support configuration of sponsor / tourist roles by the user.
-        - Manage multiple [sponsor, tourist] relationships.
-        - Implement the 'revoke' command to remove a visa.
     """
 
     def __init__(self, command_prefix: str, sponsor_role: str, visa_role: str,
