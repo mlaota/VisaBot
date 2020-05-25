@@ -102,7 +102,7 @@ class VisaBot(dc.Client):
 
     async def _action_setrole(self, message: dc.Message):
         """Updates the role name of a known responsibility (i.e. sponsor)."""
-        if not message.author.server_permissions.administrator:
+        if not message.author.guild_permissions.administrator:
             await message.channel.send('Only a server admin can do that!')
         NUM_TOKENS = 3
         _, responsibility, role_name = message.content.split(maxsplit=(NUM_TOKENS - 1))
