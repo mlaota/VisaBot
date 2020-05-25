@@ -89,9 +89,7 @@ class VisaBot(dc.Client):
     async def _action_sponsor(self, message: dc.Message):
         """Handles the administration of visas from a sponsor to a tourist."""
         NUM_TOKENS = 3
-        if not dc.utils.get(message.author.roles, name=self.sponsor_role):
-            await message.channel.send('Only the %s role can sponsor members!' % self.sponsor_role)
-            return
+        self._validate_role(self.sponsor_role)
         _, target, duration = message.content.split(maxsplit=(NUM_TOKENS - 1))
         if len(message.mentions) > 0:
             try:
@@ -104,6 +102,8 @@ class VisaBot(dc.Client):
 
     async def _action_setrole(self, message: dc.Message):
         """Updates the role name of a known responsibility (i.e. sponsor)."""
+        if not message.author.server_permissions.administrator:
+            await message.channel.send('Only a server admin can do that!')
         NUM_TOKENS = 3
         _, responsibility, role_name = message.content.split(maxsplit=(NUM_TOKENS - 1))
         if responsibility == 'sponsor':
@@ -112,6 +112,10 @@ class VisaBot(dc.Client):
             self.visa_role = role_name
         else:
             await self._help(message)
+
+    async def _validate_role(self, message: dc.Message, role_name: str):
+        if not dc.utils.get(message.author.roles, name=role_name):
+            await message.channel.send('Only the %s role can do that!' % role_name)
 
     async def _approve_visa(self, member: dc.Member, expiry: dt.datetime):
         """
