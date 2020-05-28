@@ -2,9 +2,13 @@ import asyncio
 import datetime as dt
 import pytz
 import discord as dc
-from typing import Set
+from collections import defaultdict
+from typing import Dict, DefaultDict
 import re
 import nltk
+
+# Custom type names and aliases
+RoleName = str
 
 
 class Visa(object):
@@ -12,12 +16,15 @@ class Visa(object):
     Provides functionality for constructing a visa and querying its validity.
     """
 
-    def __init__(self, recipient: dc.Member, sponsor: dc.Member, role: str,
+    def __init__(self, recipient: dc.Member, sponsor: dc.Member, role: dc.Role,
                  expiry: dt.datetime):
         self.recipient = recipient
         self.sponsor = sponsor
         self.role = role
         self.expiry = expiry
+
+    def __key(self):
+        return self.recipient, self.sponsor, self.expiry, self.role
 
     @property
     def is_expired(self):
@@ -31,6 +38,14 @@ class Visa(object):
         Returns a string representing the expiry date using the given zone.
         """
         return self.expiry.astimezone(pytz.timezone(zone)).strftime('%c ' + str(zone))
+
+    def __eq__(self, other):
+        if not isinstance(other, Visa):
+            return False
+        return self.__key() == other.__key()
+
+    def __hash__(self):
+        return hash(self.__key())
 
 
 class VisaBot(dc.Client):
@@ -56,10 +71,10 @@ class VisaBot(dc.Client):
 
     def __init__(self, command_prefix: str, announcement_channel='visa-status'):
         super().__init__()
-        self._visa_sponsor_roles = {}
+        self._visa_sponsor_roles: Dict[RoleName, RoleName] = {}
         self.command_prefix = command_prefix
         self.announcement_channel = announcement_channel
-        self._visas = set()  # type: Set[Visa]
+        self._visas: DefaultDict[dc.Role, Dict[dc.Member, Visa]] = defaultdict(dict)
         self._cmd_handlers = {  # Map actions to their respective handlers.
             'sponsor': self._action_sponsor,
             'openvisa': self._action_openvisa,
@@ -119,8 +134,10 @@ class VisaBot(dc.Client):
         """
 
         def _re_extract_from_quotes(content):
-            """Regex helper which extracts the first string in 'content' surrounded
-            by quotes."""
+            """
+            Regex helper which extracts the first string in 'content' surrounded
+            by quotes.
+            """
             group = re.findall(r'".*"', content)
             if len(group) == 0:
                 raise ValueError('Could not find a quoted string!')
@@ -129,11 +146,13 @@ class VisaBot(dc.Client):
         # Parse the command's tokens.
         _, tourist, rest = message.content.split(maxsplit=2)
         try:
-            visa_role = _re_extract_from_quotes(rest)
+            visa_rolename = _re_extract_from_quotes(rest)
+            visa_role = dc.utils.get(message.guild.roles, name=visa_rolename)
         except ValueError:
             await self._help(message, 'The visa role needs to be surrounded by quotes!')
             return
-        duration_slice = slice(len(visa_role) + 2, len(rest))  # the 2 accounts for quotation marks.
+        # The 2 accounts for quotation marks.
+        duration_slice = slice(len(visa_rolename) + 2, len(rest))
         duration = rest[duration_slice].strip()
 
         # Validate and execute the action.
@@ -142,12 +161,12 @@ class VisaBot(dc.Client):
             return
 
         # Validate the author's role and permission to administer the visa.
-        sponsor_role = self._visa_sponsor_roles.get(visa_role, None)
-        if not sponsor_role:
+        sponsor_rolename = self._visa_sponsor_roles.get(visa_rolename, None)
+        if not sponsor_rolename:
             await self._help(message, 'There is no open visa for that role!')
             return
-        await self._validate_role(message, sponsor_role)
-        if not dc.utils.get(message.author.roles, name=sponsor_role):
+        await self._validate_role(message, sponsor_rolename)
+        if not dc.utils.get(message.author.roles, name=sponsor_rolename):
             await self._help(message, 'You don\'t have the correct sponsor role!')
             return
 
@@ -179,12 +198,12 @@ class VisaBot(dc.Client):
             return
 
         # Map the sponsor role to the visa role if they are both valid.
-        sponsor_role, visa_role = await _get_roles()
-        for role in [sponsor_role, visa_role]:
+        sponsor_rolename, visa_rolename = await _get_roles()
+        for role in [sponsor_rolename, visa_rolename]:
             if not dc.utils.get(message.guild.roles, name=role):
                 await self._help(message, 'The role %s doesn\'t exist' % role)
                 return
-        self._visa_sponsor_roles[visa_role] = sponsor_role
+        self._visa_sponsor_roles[visa_rolename] = sponsor_rolename
 
     async def _action_closevisa(self, message):
         """
@@ -201,9 +220,8 @@ class VisaBot(dc.Client):
         Gives the user a visa role and updates the internal collection
         of visas.
         """
-        visa_role = dc.utils.get(visa.recipient.guild.roles, name=visa.role)
-        await visa.recipient.add_roles(visa_role)
-        self._visas.add(visa)
+        await visa.recipient.add_roles(visa.role)
+        self._visas[visa.role][visa.recipient] = visa
         channel = dc.utils.get(visa.recipient.guild.channels, name=self.announcement_channel)
         await channel.send('{}\'s visa will expire on {}'.format(visa.recipient.mention,
                                                                  visa.expiry_to_str('US/Eastern')))
@@ -218,17 +236,16 @@ class VisaBot(dc.Client):
         while True:
             await self.wait_until_ready()
             expired = set()
-            for visa in self._visas:
-                if not visa.is_expired:
-                    continue
-                visa_role = dc.utils.get(visa.recipient.guild.roles, name=visa.role)
-                await visa.recipient.remove_roles(visa_role)
-                channel = dc.utils.get(visa.recipient.guild.channels,
-                                       name=self.announcement_channel)
-                await channel.send('{}\'s visa has expired!'.format(visa.recipient.mention))
-                expired.add(visa)
-            for visa in expired:
-                self._visas.remove(visa)
+            for role_visas in self._visas.keys():
+                for recipient, visa in self._visas[role_visas].items():
+                    if not visa.is_expired:
+                        continue
+                    await recipient.remove_roles(visa.role)
+                    channel = dc.utils.get(recipient.guild.channels, name=self.announcement_channel)
+                    await channel.send('{}\'s visa has expired!'.format(recipient.mention))
+                    expired.add(recipient)
+                for recipient in expired:
+                    del self._visas[role_visas][recipient]
             await asyncio.sleep(POLL_TICK_SECS)
 
 
