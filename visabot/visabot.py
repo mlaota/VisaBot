@@ -4,6 +4,7 @@ import pytz
 import discord as dc
 from typing import Set
 import re
+import nltk
 
 
 class Visa(object):
@@ -106,8 +107,11 @@ class VisaBot(dc.Client):
             return
         if action in self._cmd_handlers:
             self.loop.create_task(self._cmd_handlers[action](message))
-        else:
-            await self._help(message)
+        else:  # If the action edit distance is small, ask for clarification.
+            MAX_DISTANCE = 2
+            for key in self._cmd_handlers.keys():
+                if nltk.edit_distance(action, key) <= MAX_DISTANCE:
+                    await self._help(message, 'Did you mean to use !%s?' % key)
 
     async def _action_sponsor(self, message: dc.Message):
         """
