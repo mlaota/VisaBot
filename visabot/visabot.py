@@ -99,9 +99,9 @@ class VisaBot(dc.Client):
         prompt = err if err else 'I don\'t understand what you said :('
 
         sponsor_fmt = 'sponsor:\n!sponsor [User] "[Visa Role]" [Duration]'
-        ex_1 = '!sponsor @friend 5 minutes'
-        ex_2 = '!sponsor @friend 3 hrs 1 min 30 secs'
-        ex_3 = '!sponsor @friend 1 week, 2 days, 1.5 hours, and 3 seconds'
+        ex_1 = '!sponsor @friend "My Visa Role" 5 minutes'
+        ex_2 = '!sponsor @friend "My Visa Role" 3 hrs 1 min 30 secs'
+        ex_3 = '!sponsor @friend "My Visa Role" 1 week, 2 days, 1.5 hours, and 3 seconds'
         sponsor_usage = '{}\nExamples:\n\t{}\n\t{}\n\t{}'.format(sponsor_fmt, ex_1, ex_2, ex_3)
 
         openvisa_usage = 'openvisa:\n!openvisa'
