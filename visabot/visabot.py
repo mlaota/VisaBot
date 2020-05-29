@@ -138,10 +138,11 @@ class VisaBot(dc.Client):
             Regex helper which extracts the first string in 'content' surrounded
             by quotes.
             """
-            group = re.findall(r'".*"', content)
+            quote_chars = '\"ʺ˝ˮ˶״᳓“”‟″‶〃＂'
+            group = re.findall('[{0}](.*)[{0}]'.format(quote_chars), content)
             if len(group) == 0:
                 raise ValueError('Could not find a quoted string!')
-            return group[0].strip('\"')
+            return group[0]
 
         # Parse the command's tokens.
         _, tourist, rest = message.content.split(maxsplit=2)
@@ -151,7 +152,7 @@ class VisaBot(dc.Client):
         except ValueError:
             await self._help(message, 'The visa role needs to be surrounded by quotes!')
             return
-        # The 2 accounts for quotation marks.
+        # The +2 accounts for the scrubbed quotation marks.
         duration_slice = slice(len(visa_rolename) + 2, len(rest))
         duration = rest[duration_slice].strip()
 
