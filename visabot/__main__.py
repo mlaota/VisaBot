@@ -1,6 +1,7 @@
 import discord
 import os
-from visabot import VisaBot
+from visabot.visabot import VisaBot
+from visabot.keep_alive import keep_alive
 
 if __name__ == '__main__':
     password = os.getenv('VISABOT_SECRET')
